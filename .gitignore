@@ -1,0 +1,25 @@
+# Dependencias
+/vendor/
+
+# Archivos de entorno
+.env
+
+# Logs
+/storage/logs/*.log
+!/storage/logs/.gitkeep
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Cache
+/storage/cache/
+*.cache
+
