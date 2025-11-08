@@ -1,0 +1,33 @@
+# Habilitar mod_rewrite
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # Redirigir todas las solicitudes al index.php (Front Controller)
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ index.php [QSA,L]
+</IfModule>
+
+# Configuración de seguridad
+<IfModule mod_headers.c>
+    # Prevenir clickjacking
+    Header set X-Frame-Options "SAMEORIGIN"
+    
+    # Prevenir MIME type sniffing
+    Header set X-Content-Type-Options "nosniff"
+    
+    # Habilitar XSS protection
+    Header set X-XSS-Protection "1; mode=block"
+</IfModule>
+
+# Proteger archivos sensibles
+<FilesMatch "\.(env|log|ini)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Configurar tipos MIME
+<IfModule mod_mime.c>
+    AddType application/json .json
+</IfModule>
+

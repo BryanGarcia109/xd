@@ -1,0 +1,247 @@
+{
+  "info": {
+    "name": "Canchas Sintéticas API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Juan Pérez\",\n  \"email\": \"juan@example.com\",\n  \"telefono\": \"987654321\",\n  \"password\": \"cliente123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@canchas.com\",\n  \"password\": \"admin123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.data && jsonData.data.token) {",
+                  "        pm.environment.set('auth_token', jsonData.data.token);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{auth_token}}"}
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/profile",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "profile"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Fields",
+      "item": [
+        {
+          "name": "List Fields",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/fields?status=active",
+              "host": ["{{base_url}}"],
+              "path": ["api", "fields"],
+              "query": [{"key": "status", "value": "active"}]
+            }
+          }
+        },
+        {
+          "name": "Get Field",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/fields/1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "fields", "1"]
+            }
+          }
+        },
+        {
+          "name": "Get Availability",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/fields/1/availability?date=2024-12-25",
+              "host": ["{{base_url}}"],
+              "path": ["api", "fields", "1", "availability"],
+              "query": [{"key": "date", "value": "2024-12-25"}]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Bookings",
+      "item": [
+        {
+          "name": "Create Booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{auth_token}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"field_id\": 1,\n  \"date\": \"2024-12-25\",\n  \"start_time\": \"10:00:00\",\n  \"duration_minutes\": 60\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/bookings",
+              "host": ["{{base_url}}"],
+              "path": ["api", "bookings"]
+            }
+          }
+        },
+        {
+          "name": "List Bookings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{auth_token}}"}
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/bookings",
+              "host": ["{{base_url}}"],
+              "path": ["api", "bookings"]
+            }
+          }
+        },
+        {
+          "name": "Cancel Booking",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{auth_token}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Cambio de planes\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/bookings/1/cancel",
+              "host": ["{{base_url}}"],
+              "path": ["api", "bookings", "1", "cancel"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payments",
+      "item": [
+        {
+          "name": "Process Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{auth_token}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"booking_id\": 1,\n  \"method\": \"card\",\n  \"amount\": 80.00\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/payments",
+              "host": ["{{base_url}}"],
+              "path": ["api", "payments"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "Report Bookings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{auth_token}}"}
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/reports/bookings?from=2024-12-01&to=2024-12-31",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "reports", "bookings"],
+              "query": [
+                {"key": "from", "value": "2024-12-01"},
+                {"key": "to", "value": "2024-12-31"}
+              ]
+            }
+          }
+        },
+        {
+          "name": "Report Revenue",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{auth_token}}"}
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/reports/revenue?from=2024-12-01&to=2024-12-31",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "reports", "revenue"],
+              "query": [
+                {"key": "from", "value": "2024-12-01"},
+                {"key": "to", "value": "2024-12-31"}
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000"
+    },
+    {
+      "key": "auth_token",
+      "value": ""
+    }
+  ]
+}
+

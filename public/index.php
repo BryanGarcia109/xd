@@ -16,65 +16,66 @@ if (file_exists($envFile)) {
 }
 
 // Configurar zona horaria
-date_default_timezone_set('America/Lima');
+$appConfig = require __DIR__ . '/../config/app.php';
+date_default_timezone_set($appConfig['timezone']);
 
-// Router simple
-$requestUri = $_SERVER['REQUEST_URI'];
-$requestMethod = $_SERVER['REQUEST_METHOD'];
+// Iniciar sesión si no está iniciada
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
-// Eliminar query string de la URI
-$requestUri = strtok($requestUri, '?');
+// Obtener método y URI
+$requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+$requestUri = $_SERVER['REQUEST_URI'] ?? '/';
 
-// Eliminar la base URL si existe
-$baseUrl = getenv('BASE_URL') ?: 'http://localhost:8000';
-$basePath = parse_url($baseUrl, PHP_URL_PATH) ?? '';
+// Detectar automáticamente el base path desde la ubicación del script
+$scriptName = $_SERVER['SCRIPT_NAME'] ?? '/index.php';
+$scriptDir = dirname($scriptName);
+// Normalizar: si es '/' o '\', entonces basePath es vacío
+$basePath = ($scriptDir === '/' || $scriptDir === '\\') ? '' : $scriptDir;
+
+// Normalizar la URI: remover el base path y query string
+$requestUri = parse_url($requestUri, PHP_URL_PATH) ?? '/';
+// Remover el base path de la URI si está presente
 if ($basePath && strpos($requestUri, $basePath) === 0) {
     $requestUri = substr($requestUri, strlen($basePath));
 }
-
-// Normalizar la URI
+// Normalizar trailing slashes
 $requestUri = rtrim($requestUri, '/') ?: '/';
 
-// Definir rutas (esto se puede mover a un archivo routes.php más adelante)
-$routes = [
-    'GET /' => function() {
-        header('Content-Type: application/json');
-        echo json_encode([
-            'message' => 'API de Gestión de Canchas Sintéticas',
-            'version' => '1.0.0',
-            'status' => 'ok'
-        ]);
-    },
-    'GET /health' => function() {
-        header('Content-Type: application/json');
-        echo json_encode([
-            'status' => 'ok',
-            'timestamp' => date('Y-m-d H:i:s')
-        ]);
-    },
-];
-
-// Buscar la ruta
-$routeKey = "$requestMethod $requestUri";
-$routeFound = false;
-
-foreach ($routes as $route => $handler) {
-    // Comparación simple (se puede mejorar con expresiones regulares)
-    if ($route === $routeKey) {
-        $routeFound = true;
-        $handler();
-        break;
-    }
-}
-
-// Si no se encuentra la ruta, retornar 404
-if (!$routeFound) {
-    http_response_code(404);
+// Manejar rutas raíz y health check
+if ($requestUri === '/' || $requestUri === '/index.php') {
     header('Content-Type: application/json');
     echo json_encode([
-        'success' => false,
-        'message' => 'Ruta no encontrada',
-        'path' => $requestUri
+        'message' => 'API de Gestión de Canchas Sintéticas',
+        'version' => '1.0.0',
+        'status' => 'ok',
+        'endpoints' => [
+            'auth' => $basePath . '/api/auth',
+            'fields' => $basePath . '/api/fields',
+            'bookings' => $basePath . '/api/bookings',
+            'payments' => $basePath . '/api/payments',
+            'admin' => $basePath . '/api/admin',
+            'docs' => $basePath . '/api/docs'
+        ]
     ]);
+    exit;
 }
+
+if ($requestUri === '/health') {
+    header('Content-Type: application/json');
+    echo json_encode([
+        'status' => 'ok',
+        'timestamp' => date('Y-m-d H:i:s'),
+        'timezone' => date_default_timezone_get()
+    ]);
+    exit;
+}
+
+// Cargar rutas
+$routes = require __DIR__ . '/../config/routes.php';
+
+// Crear router y despachar (no necesitamos pasar basePath ya que la URI ya está normalizada)
+$router = new App\Core\Router($routes, '');
+$router->dispatch($requestMethod, $requestUri);
 

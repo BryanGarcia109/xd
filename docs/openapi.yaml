@@ -1,0 +1,1189 @@
+openapi: 3.0.0
+info:
+  title: API de Gestión de Canchas Sintéticas
+  version: 1.0.0
+  description: |
+    Backend REST API para la gestión de alquiler de canchas sintéticas.
+    
+    Esta API permite:
+    - Gestión de usuarios y autenticación
+    - Consulta y gestión de canchas
+    - Creación y gestión de reservas
+    - Procesamiento de pagos
+    - Reportes administrativos
+
+servers:
+  - url: http://localhost:8000
+    description: Servidor de desarrollo
+
+tags:
+  - name: Auth
+    description: Autenticación y gestión de usuarios
+  - name: Fields
+    description: Gestión de canchas
+  - name: Bookings
+    description: Gestión de reservas
+  - name: Payments
+    description: Gestión de pagos
+  - name: Admin
+    description: Endpoints de administración
+
+paths:
+  /api/auth/register:
+    post:
+      tags: [Auth]
+      summary: Registrar nuevo usuario
+      description: Crea una nueva cuenta de usuario
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nombre, email, telefono, password]
+              properties:
+                nombre:
+                  type: string
+                  example: Juan Pérez
+                email:
+                  type: string
+                  format: email
+                  example: juan@example.com
+                telefono:
+                  type: string
+                  example: "+51987654321"
+                password:
+                  type: string
+                  format: password
+                  minLength: 6
+                  example: "password123"
+      responses:
+        '201':
+          description: Usuario registrado exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Error de validación
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Email ya registrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Iniciar sesión
+      description: Autentica un usuario y retorna un token JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: juan@example.com
+                password:
+                  type: string
+                  format: password
+                  example: "password123"
+      responses:
+        '200':
+          description: Login exitoso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Login exitoso"
+                  data:
+                    type: object
+                    properties:
+                      token:
+                        type: string
+                        example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                      user:
+                        $ref: '#/components/schemas/User'
+        '400':
+          description: Error de validación
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Credenciales inválidas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/forgot-password:
+    post:
+      tags: [Auth]
+      summary: Solicitar recuperación de contraseña
+      description: Envía un token de recuperación al email del usuario
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: juan@example.com
+      responses:
+        '200':
+          description: Solicitud procesada (siempre retorna éxito por seguridad)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Error de validación
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/reset-password:
+    post:
+      tags: [Auth]
+      summary: Restablecer contraseña
+      description: Restablece la contraseña usando un token de recuperación
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, password]
+              properties:
+                token:
+                  type: string
+                  example: "reset_token_123"
+                password:
+                  type: string
+                  format: password
+                  minLength: 6
+                  example: "newpassword123"
+      responses:
+        '200':
+          description: Contraseña actualizada exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Token inválido o expirado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/profile:
+    get:
+      tags: [Auth]
+      summary: Obtener perfil del usuario actual
+      description: Retorna la información del usuario autenticado
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Perfil del usuario
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    put:
+      tags: [Auth]
+      summary: Actualizar perfil
+      description: Actualiza la información del usuario autenticado
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nombre:
+                  type: string
+                telefono:
+                  type: string
+                password:
+                  type: string
+                  format: password
+                  minLength: 6
+      responses:
+        '200':
+          description: Perfil actualizado exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Error de validación
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/fields:
+    get:
+      tags: [Fields]
+      summary: Listar canchas
+      description: Obtiene una lista de canchas disponibles con filtros opcionales
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, inactive]
+          description: Estado de la cancha
+        - name: ubicacion
+          in: query
+          schema:
+            type: string
+          description: Filtrar por ubicación
+        - name: tipo
+          in: query
+          schema:
+            type: string
+          description: Tipo de cancha
+        - name: min_price
+          in: query
+          schema:
+            type: number
+            format: float
+          description: Precio mínimo por hora
+        - name: max_price
+          in: query
+          schema:
+            type: number
+            format: float
+          description: Precio máximo por hora
+      responses:
+        '200':
+          description: Lista de canchas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Field'
+    
+    post:
+      tags: [Fields]
+      summary: Crear cancha (Admin)
+      description: Crea una nueva cancha (requiere rol admin)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nombre, ubicacion, price_per_hour]
+              properties:
+                nombre:
+                  type: string
+                  example: "Cancha 1"
+                descripcion:
+                  type: string
+                  example: "Cancha sintética de primera calidad"
+                ubicacion:
+                  type: string
+                  example: "Lima, Perú"
+                tipo:
+                  type: string
+                  example: "sintética"
+                dimensiones:
+                  type: string
+                  example: "40x20 m"
+                price_per_hour:
+                  type: number
+                  format: float
+                  example: 50.00
+                photo_url:
+                  type: string
+                  format: uri
+                status:
+                  type: string
+                  enum: [active, inactive]
+                  default: active
+      responses:
+        '201':
+          description: Cancha creada exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Error de validación
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: No autorizado (requiere rol admin)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/fields/{id}:
+    get:
+      tags: [Fields]
+      summary: Obtener cancha por ID
+      description: Obtiene los detalles de una cancha específica
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID de la cancha
+      responses:
+        '200':
+          description: Cancha encontrada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Field'
+        '404':
+          description: Cancha no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    put:
+      tags: [Fields]
+      summary: Actualizar cancha (Admin)
+      description: Actualiza la información de una cancha (requiere rol admin)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nombre:
+                  type: string
+                descripcion:
+                  type: string
+                ubicacion:
+                  type: string
+                tipo:
+                  type: string
+                dimensiones:
+                  type: string
+                price_per_hour:
+                  type: number
+                  format: float
+                photo_url:
+                  type: string
+                  format: uri
+                status:
+                  type: string
+                  enum: [active, inactive]
+      responses:
+        '200':
+          description: Cancha actualizada exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Error de validación
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado (requiere rol admin)
+        '404':
+          description: Cancha no encontrada
+    
+    delete:
+      tags: [Fields]
+      summary: Eliminar cancha (Admin)
+      description: Elimina una cancha (requiere rol admin)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Cancha eliminada exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado (requiere rol admin)
+        '404':
+          description: Cancha no encontrada
+
+  /api/fields/{id}/availability:
+    get:
+      tags: [Fields]
+      summary: Obtener disponibilidad de una cancha
+      description: Obtiene las franjas horarias disponibles para una cancha en una fecha específica
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID de la cancha
+        - name: date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: Fecha en formato YYYY-MM-DD
+      responses:
+        '200':
+          description: Franjas disponibles
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      field_id:
+                        type: integer
+                      date:
+                        type: string
+                        format: date
+                      available_slots:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            start_time:
+                              type: string
+                            end_time:
+                              type: string
+                            available:
+                              type: boolean
+        '400':
+          description: Error de validación (fecha requerida o formato inválido)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Cancha no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/bookings:
+    get:
+      tags: [Bookings]
+      summary: Listar reservas
+      description: Obtiene una lista de reservas. Los usuarios solo ven sus propias reservas, los admins ven todas.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: field_id
+          in: query
+          schema:
+            type: integer
+          description: Filtrar por cancha
+        - name: user_id
+          in: query
+          schema:
+            type: integer
+          description: Filtrar por usuario (solo admin)
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, confirmed, cancelled, completed]
+          description: Estado de la reserva
+        - name: date_from
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Fecha desde
+        - name: date_to
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Fecha hasta
+      responses:
+        '200':
+          description: Lista de reservas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Booking'
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    post:
+      tags: [Bookings]
+      summary: Crear reserva
+      description: Crea una nueva reserva para el usuario autenticado
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [field_id, date, start_time, duration_minutes]
+              properties:
+                field_id:
+                  type: integer
+                  example: 1
+                date:
+                  type: string
+                  format: date
+                  example: "2024-12-25"
+                start_time:
+                  type: string
+                  format: time
+                  example: "10:00"
+                duration_minutes:
+                  type: integer
+                  minimum: 30
+                  maximum: 480
+                  example: 60
+                  description: Duración en minutos (mínimo 30, máximo 480)
+      responses:
+        '201':
+          description: Reserva creada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/Booking'
+        '400':
+          description: Error de validación o cancha no disponible
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/bookings/{id}:
+    get:
+      tags: [Bookings]
+      summary: Obtener reserva por ID
+      description: Obtiene los detalles de una reserva específica
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Reserva encontrada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Booking'
+        '401':
+          description: No autenticado
+        '403':
+          description: No tienes permiso para ver esta reserva
+        '404':
+          description: Reserva no encontrada
+
+  /api/bookings/{id}/cancel:
+    put:
+      tags: [Bookings]
+      summary: Cancelar reserva
+      description: Cancela una reserva existente
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  example: "Cambio de planes"
+      responses:
+        '200':
+          description: Reserva cancelada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/Booking'
+        '400':
+          description: No se puede cancelar la reserva (fecha pasada o muy próxima)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: No autenticado
+        '403':
+          description: No tienes permiso para cancelar esta reserva
+        '404':
+          description: Reserva no encontrada
+
+  /api/payments:
+    post:
+      tags: [Payments]
+      summary: Procesar pago
+      description: Procesa un pago para una reserva
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [booking_id, method, amount]
+              properties:
+                booking_id:
+                  type: integer
+                  example: 1
+                method:
+                  type: string
+                  enum: [cash, card, transfer, yape, plin]
+                  example: "yape"
+                amount:
+                  type: number
+                  format: float
+                  example: 50.00
+      responses:
+        '200':
+          description: Pago procesado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/Payment'
+        '400':
+          description: Error de validación
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/payments/{id}:
+    get:
+      tags: [Payments]
+      summary: Obtener pago por ID
+      description: Obtiene los detalles de un pago específico
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Pago encontrado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Payment'
+        '401':
+          description: No autenticado
+        '403':
+          description: No tienes permiso para ver este pago
+        '404':
+          description: Pago no encontrado
+
+  /api/payments/booking/{id}:
+    get:
+      tags: [Payments]
+      summary: Obtener pagos de una reserva
+      description: Obtiene todos los pagos asociados a una reserva
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID de la reserva
+      responses:
+        '200':
+          description: Lista de pagos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Payment'
+        '401':
+          description: No autenticado
+
+  /api/admin/reports/bookings:
+    get:
+      tags: [Admin]
+      summary: Reporte de reservas
+      description: Obtiene un reporte detallado de reservas con estadísticas (requiere rol admin)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: field_id
+          in: query
+          schema:
+            type: integer
+          description: Filtrar por cancha
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, confirmed, cancelled, completed]
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Fecha desde
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Fecha hasta
+      responses:
+        '200':
+          description: Reporte de reservas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      bookings:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Booking'
+                      statistics:
+                        type: object
+                        properties:
+                          total:
+                            type: integer
+                          pending:
+                            type: integer
+                          confirmed:
+                            type: integer
+                          cancelled:
+                            type: integer
+                          completed:
+                            type: integer
+                          total_revenue:
+                            type: number
+                            format: float
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado (requiere rol admin)
+
+  /api/admin/reports/revenue:
+    get:
+      tags: [Admin]
+      summary: Reporte de ingresos
+      description: Obtiene un reporte de ingresos con análisis por método de pago y cancha (requiere rol admin)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+          description: "Fecha desde (default: primer día del mes actual)"
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+          description: "Fecha hasta (default: hoy)"
+      responses:
+        '200':
+          description: Reporte de ingresos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      period:
+                        type: object
+                        properties:
+                          from:
+                            type: string
+                            format: date
+                          to:
+                            type: string
+                            format: date
+                      total_revenue:
+                        type: number
+                        format: float
+                      by_method:
+                        type: object
+                        additionalProperties:
+                          type: number
+                          format: float
+                      by_field:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field_id:
+                              type: integer
+                            field_nombre:
+                              type: string
+                            total:
+                              type: number
+                              format: float
+                      payments:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Payment'
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado (requiere rol admin)
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token JWT obtenido del endpoint de login
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        nombre:
+          type: string
+          example: "Juan Pérez"
+        email:
+          type: string
+          format: email
+          example: "juan@example.com"
+        telefono:
+          type: string
+          example: "+51987654321"
+        role:
+          type: string
+          enum: [client, admin]
+          example: "client"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Field:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        nombre:
+          type: string
+          example: "Cancha 1"
+        descripcion:
+          type: string
+          nullable: true
+          example: "Cancha sintética de primera calidad"
+        ubicacion:
+          type: string
+          example: "Lima, Perú"
+        tipo:
+          type: string
+          example: "sintética"
+        dimensiones:
+          type: string
+          nullable: true
+          example: "40x20 m"
+        price_per_hour:
+          type: number
+          format: float
+          example: 50.00
+        photo_url:
+          type: string
+          format: uri
+          nullable: true
+        status:
+          type: string
+          enum: [active, inactive]
+          example: "active"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Booking:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        user_id:
+          type: integer
+          example: 1
+        field_id:
+          type: integer
+          example: 1
+        date:
+          type: string
+          format: date
+          example: "2024-12-25"
+        start_time:
+          type: string
+          format: time
+          example: "10:00:00"
+        duration_minutes:
+          type: integer
+          example: 60
+        end_time:
+          type: string
+          format: time
+          example: "11:00:00"
+        price_total:
+          type: number
+          format: float
+          example: 50.00
+        status:
+          type: string
+          enum: [pending, confirmed, cancelled, completed]
+          example: "confirmed"
+        cancellation_reason:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Payment:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        booking_id:
+          type: integer
+          example: 1
+        user_id:
+          type: integer
+          example: 1
+        method:
+          type: string
+          enum: [cash, card, transfer, yape, plin]
+          example: "yape"
+        amount:
+          type: number
+          format: float
+          example: 50.00
+        status:
+          type: string
+          enum: [pending, completed, failed, refunded]
+          example: "completed"
+        transaction_id:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Operación exitosa"
+        data:
+          type: object
+          description: Datos de la respuesta (puede variar según el endpoint)
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: "Error en la operación"
